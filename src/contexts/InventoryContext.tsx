@@ -1,14 +1,17 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 export interface Product {
   sku: string;
   name: string;
   category: string;
   price: number;
-  cost: number; // buying/wholesale price
+  cost: number;
   stock: number;
   status: string;
-  salesCount: number; // total units sold
+  salesCount: number;
 }
 
 interface InventoryContextType {
@@ -17,102 +20,10 @@ interface InventoryContextType {
   updateProduct: (sku: string, updates: Partial<Product>) => void;
   reduceStock: (items: { id: string; quantity: number }[]) => boolean;
   getProduct: (sku: string) => Product | undefined;
+  loading: boolean;
 }
 
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined);
-
-const initialProducts: Product[] = [
-  {
-    sku: "P1001",
-    name: "Power Drill Kit",
-    category: "tools",
-    price: 129.99,
-    cost: 85.00,
-    stock: 25,
-    status: "in-stock",
-    salesCount: 45,
-  },
-  {
-    sku: "E2034",
-    name: "LED Bulbs (4-Pack)",
-    category: "lighting",
-    price: 15.5,
-    cost: 10.00,
-    stock: 8,
-    status: "low-stock",
-    salesCount: 120,
-  },
-  {
-    sku: "H4012",
-    name: "Hammer (16 oz)",
-    category: "hand-tools",
-    price: 25.0,
-    cost: 16.00,
-    stock: 50,
-    status: "in-stock",
-    salesCount: 8,
-  },
-  {
-    sku: "G5151",
-    name: "Safety Goggles",
-    category: "safety",
-    price: 9.75,
-    cost: 6.50,
-    stock: 0,
-    status: "out-of-stock",
-    salesCount: 3,
-  },
-  {
-    sku: "P2045",
-    name: "Cordless Screwdriver",
-    category: "tools",
-    price: 79.99,
-    cost: 52.00,
-    stock: 15,
-    status: "in-stock",
-    salesCount: 28,
-  },
-  {
-    sku: "L3021",
-    name: "Flashlight LED",
-    category: "lighting",
-    price: 24.99,
-    cost: 16.00,
-    stock: 32,
-    status: "in-stock",
-    salesCount: 15,
-  },
-  {
-    sku: "W2010",
-    name: "Wood Screws (Box)",
-    category: "hardware",
-    price: 12.99,
-    cost: 8.50,
-    stock: 100,
-    status: "in-stock",
-    salesCount: 5,
-  },
-  {
-    sku: "T4500",
-    name: "Tape Measure",
-    category: "hand-tools",
-    price: 18.5,
-    cost: 12.00,
-    stock: 42,
-    status: "in-stock",
-    salesCount: 22,
-  },
-  {
-    sku: "P3050",
-    name: "Exterior Paint",
-    category: "paint",
-    price: 45.0,
-    cost: 30.00,
-    stock: 30,
-    status: "in-stock",
-    salesCount: 18,
-  },
-];
 
 const getProductStatus = (stock: number): string => {
   if (stock === 0) return "out-of-stock";
@@ -121,24 +32,132 @@ const getProductStatus = (stock: number): string => {
 };
 
 export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
-  const addProduct = (product: Product) => {
-    setProducts([...products, product]);
+  // Load products from database
+  useEffect(() => {
+    if (!user) {
+      setProducts([]);
+      setLoading(false);
+      return;
+    }
+
+    const loadProducts = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .order('name');
+
+        if (error) throw error;
+
+        const formattedProducts: Product[] = (data || []).map(p => ({
+          sku: p.sku,
+          name: p.name,
+          category: p.category,
+          price: Number(p.price),
+          cost: Number(p.cost),
+          stock: p.stock,
+          status: getProductStatus(p.stock),
+          salesCount: p.sales_count
+        }));
+
+        setProducts(formattedProducts);
+      } catch (error) {
+        console.error('Error loading products:', error);
+        toast.error('Failed to load products');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProducts();
+
+    // Subscribe to realtime changes
+    const channel = supabase
+      .channel('products-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'products'
+        },
+        () => {
+          loadProducts();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
+  const addProduct = async (product: Product) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('products')
+        .insert([{
+          sku: product.sku,
+          user_id: user.id,
+          name: product.name,
+          category: product.category,
+          price: product.price,
+          cost: product.cost,
+          stock: product.stock,
+          sales_count: 0
+        }]);
+
+      if (error) throw error;
+
+      // Optimistically update local state
+      setProducts([...products, product]);
+    } catch (error) {
+      console.error('Error adding product:', error);
+      toast.error('Failed to add product');
+    }
   };
 
-  const updateProduct = (sku: string, updates: Partial<Product>) => {
-    setProducts(
-      products.map((product) =>
-        product.sku === sku
-          ? {
-              ...product,
-              ...updates,
-              status: updates.stock !== undefined ? getProductStatus(updates.stock) : product.status,
-            }
-          : product
-      )
-    );
+  const updateProduct = async (sku: string, updates: Partial<Product>) => {
+    if (!user) return;
+
+    try {
+      const dbUpdates: any = {};
+      if (updates.name !== undefined) dbUpdates.name = updates.name;
+      if (updates.category !== undefined) dbUpdates.category = updates.category;
+      if (updates.price !== undefined) dbUpdates.price = updates.price;
+      if (updates.cost !== undefined) dbUpdates.cost = updates.cost;
+      if (updates.stock !== undefined) dbUpdates.stock = updates.stock;
+      if (updates.salesCount !== undefined) dbUpdates.sales_count = updates.salesCount;
+
+      const { error } = await supabase
+        .from('products')
+        .update(dbUpdates)
+        .eq('sku', sku);
+
+      if (error) throw error;
+
+      // Optimistically update local state
+      setProducts(
+        products.map((product) =>
+          product.sku === sku
+            ? {
+                ...product,
+                ...updates,
+                status: updates.stock !== undefined ? getProductStatus(updates.stock) : product.status,
+              }
+            : product
+        )
+      );
+    } catch (error) {
+      console.error('Error updating product:', error);
+      toast.error('Failed to update product');
+    }
   };
 
   const reduceStock = (items: { id: string; quantity: number }[]): boolean => {
@@ -146,26 +165,47 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     for (const item of items) {
       const product = products.find((p) => p.sku === item.id);
       if (!product || product.stock < item.quantity) {
-        return false; // Insufficient stock
+        return false;
       }
     }
 
-    // If all checks pass, reduce the stock and increment sales count
-    setProducts((prevProducts) =>
-      prevProducts.map((product) => {
-        const soldItem = items.find((item) => item.id === product.sku);
-        if (soldItem) {
-          const newStock = product.stock - soldItem.quantity;
-          return {
-            ...product,
-            stock: newStock,
-            status: getProductStatus(newStock),
-            salesCount: product.salesCount + soldItem.quantity,
-          };
+    // Update stock in database
+    items.forEach(async (item) => {
+      const product = products.find((p) => p.sku === item.id);
+      if (product) {
+        const newStock = product.stock - item.quantity;
+        const newSalesCount = product.salesCount + item.quantity;
+
+        try {
+          const { error } = await supabase
+            .from('products')
+            .update({
+              stock: newStock,
+              sales_count: newSalesCount
+            })
+            .eq('sku', item.id);
+
+          if (error) throw error;
+
+          // Optimistically update local state
+          setProducts((prevProducts) =>
+            prevProducts.map((p) =>
+              p.sku === item.id
+                ? {
+                    ...p,
+                    stock: newStock,
+                    status: getProductStatus(newStock),
+                    salesCount: newSalesCount,
+                  }
+                : p
+            )
+          );
+        } catch (error) {
+          console.error('Error reducing stock:', error);
+          toast.error('Failed to update inventory');
         }
-        return product;
-      })
-    );
+      }
+    });
 
     return true;
   };
@@ -176,7 +216,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   return (
     <InventoryContext.Provider
-      value={{ products, addProduct, updateProduct, reduceStock, getProduct }}
+      value={{ products, addProduct, updateProduct, reduceStock, getProduct, loading }}
     >
       {children}
     </InventoryContext.Provider>

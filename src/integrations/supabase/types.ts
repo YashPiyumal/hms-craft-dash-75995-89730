@@ -14,7 +14,120 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      products: {
+        Row: {
+          category: string
+          cost: number
+          created_at: string | null
+          name: string
+          price: number
+          sales_count: number
+          sku: string
+          stock: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          category: string
+          cost: number
+          created_at?: string | null
+          name: string
+          price: number
+          sales_count?: number
+          sku: string
+          stock?: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          category?: string
+          cost?: number
+          created_at?: string | null
+          name?: string
+          price?: number
+          sales_count?: number
+          sku?: string
+          stock?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          full_name: string | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      sales_transactions: {
+        Row: {
+          cost_amount: number
+          created_at: string | null
+          id: string
+          items: Json
+          profit_amount: number
+          total_amount: number
+          user_id: string
+        }
+        Insert: {
+          cost_amount: number
+          created_at?: string | null
+          id?: string
+          items: Json
+          profit_amount: number
+          total_amount: number
+          user_id: string
+        }
+        Update: {
+          cost_amount?: number
+          created_at?: string | null
+          id?: string
+          items?: Json
+          profit_amount?: number
+          total_amount?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      store_settings: {
+        Row: {
+          created_at: string | null
+          id: string
+          logo_url: string | null
+          store_name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          logo_url?: string | null
+          store_name?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          logo_url?: string | null
+          store_name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

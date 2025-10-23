@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStore } from "@/contexts/StoreContext";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -38,7 +39,14 @@ const Auth = () => {
         if (error) throw error;
       }
     } catch (error: any) {
-      console.error('Auth error:', error);
+      if (import.meta.env.DEV) {
+        console.error('Auth error:', error);
+      }
+      toast.error(
+        error?.message?.includes('already registered') 
+          ? 'This email is already registered'
+          : 'Authentication failed. Please try again.'
+      );
     } finally {
       setIsLoading(false);
     }

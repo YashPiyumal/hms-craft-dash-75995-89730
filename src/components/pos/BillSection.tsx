@@ -53,6 +53,7 @@ export const BillSection = ({ cart, onUpdateQuantity, onClearCart }: BillSection
       const { error } = await supabase
         .from('sales_transactions')
         .insert([{
+          user_id: user?.id!,
           total_amount: total,
           cost_amount: costAmount,
           profit_amount: profitAmount,
