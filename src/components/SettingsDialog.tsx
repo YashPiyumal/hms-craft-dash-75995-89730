@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useStore } from "@/contexts/StoreContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,9 +17,11 @@ interface SettingsDialogProps {
 }
 
 export const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
-  const { settings, updateStoreName, updateLogo } = useStore();
+  const { settings, updateStoreName, updateLogo, updateCurrency, updateLanguage } = useStore();
   const { user, updatePassword } = useAuth();
   const [storeName, setStoreName] = useState("");
+  const [currency, setCurrency] = useState("LKR");
+  const [language, setLanguage] = useState("English");
   const [adminName, setAdminName] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -29,6 +32,8 @@ export const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
   useEffect(() => {
     if (settings) {
       setStoreName(settings.store_name);
+      setCurrency(settings.currency);
+      setLanguage(settings.language);
     }
   }, [settings]);
 
@@ -56,6 +61,8 @@ export const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
     setIsLoading(true);
     try {
       await updateStoreName(storeName);
+      await updateCurrency(currency);
+      await updateLanguage(language);
       if (logoFile) {
         await updateLogo(logoFile);
         setLogoFile(null);
@@ -153,6 +160,37 @@ export const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
                   className="flex-1"
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="currency">Currency</Label>
+              <Select value={currency} onValueChange={setCurrency}>
+                <SelectTrigger id="currency">
+                  <SelectValue placeholder="Select currency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="LKR">LKR - Sri Lankan Rupee</SelectItem>
+                  <SelectItem value="USD">USD - US Dollar</SelectItem>
+                  <SelectItem value="EUR">EUR - Euro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="language">Language</Label>
+              <Select value={language} onValueChange={setLanguage}>
+                <SelectTrigger id="language">
+                  <SelectValue placeholder="Select language" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="English">English</SelectItem>
+                  <SelectItem value="Sinhala">සිංහල (Sinhala)</SelectItem>
+                  <SelectItem value="Tamil">தமிழ் (Tamil)</SelectItem>
+                  <SelectItem value="French">Français (French)</SelectItem>
+                  <SelectItem value="German">Deutsch (German)</SelectItem>
+                  <SelectItem value="Dutch">Nederlands (Dutch)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <Button onClick={handleStoreUpdate} disabled={isLoading}>

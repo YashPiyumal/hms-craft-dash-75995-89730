@@ -107,7 +107,9 @@ export type Database = {
       store_settings: {
         Row: {
           created_at: string | null
+          currency: string
           id: string
+          language: string
           logo_url: string | null
           store_name: string
           updated_at: string | null
@@ -115,7 +117,9 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          currency?: string
           id?: string
+          language?: string
           logo_url?: string | null
           store_name?: string
           updated_at?: string | null
@@ -123,7 +127,9 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          currency?: string
           id?: string
+          language?: string
           logo_url?: string | null
           store_name?: string
           updated_at?: string | null

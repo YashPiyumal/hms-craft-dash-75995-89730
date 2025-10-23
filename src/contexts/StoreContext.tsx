@@ -6,6 +6,8 @@ interface StoreSettings {
   id: string;
   store_name: string;
   logo_url: string | null;
+  currency: string;
+  language: string;
 }
 
 interface StoreContextType {
@@ -13,6 +15,8 @@ interface StoreContextType {
   loading: boolean;
   updateStoreName: (name: string) => Promise<void>;
   updateLogo: (file: File) => Promise<void>;
+  updateCurrency: (currency: string) => Promise<void>;
+  updateLanguage: (language: string) => Promise<void>;
   refreshSettings: () => Promise<void>;
 }
 
@@ -106,12 +110,46 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     await fetchSettings();
   };
 
+  const updateCurrency = async (currency: string) => {
+    if (!settings) return;
+
+    const { error } = await supabase
+      .from('store_settings')
+      .update({ currency })
+      .eq('id', settings.id);
+
+    if (error) {
+      toast.error('Failed to update currency');
+      throw error;
+    }
+
+    setSettings({ ...settings, currency });
+    toast.success('Currency updated!');
+  };
+
+  const updateLanguage = async (language: string) => {
+    if (!settings) return;
+
+    const { error } = await supabase
+      .from('store_settings')
+      .update({ language })
+      .eq('id', settings.id);
+
+    if (error) {
+      toast.error('Failed to update language');
+      throw error;
+    }
+
+    setSettings({ ...settings, language });
+    toast.success('Language updated!');
+  };
+
   const refreshSettings = async () => {
     await fetchSettings();
   };
 
   return (
-    <StoreContext.Provider value={{ settings, loading, updateStoreName, updateLogo, refreshSettings }}>
+    <StoreContext.Provider value={{ settings, loading, updateStoreName, updateLogo, updateCurrency, updateLanguage, refreshSettings }}>
       {children}
     </StoreContext.Provider>
   );
