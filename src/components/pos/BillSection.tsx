@@ -4,12 +4,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { CreditCard, Banknote, Trash2, Plus, Minus, Receipt } from "lucide-react";
+import { CreditCard, Banknote, Trash2, Plus, Minus, Receipt, Download } from "lucide-react";
 import { CartItem } from "@/pages/POS";
 import { useInventory } from "@/contexts/InventoryContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useStore } from "@/contexts/StoreContext";
+import { useCurrency } from "@/hooks/useCurrency";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import jsPDF from 'jspdf';
 
 interface BillSectionProps {
   cart: CartItem[];
@@ -21,10 +24,77 @@ export const BillSection = ({ cart, onUpdateQuantity, onClearCart }: BillSection
   const [customer, setCustomer] = useState("");
   const { reduceStock, products } = useInventory();
   const { user } = useAuth();
+  const { settings } = useStore();
+  const { formatCurrency } = useCurrency();
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const tax = subtotal * 0.05;
   const total = subtotal + tax;
+
+  const generatePDF = () => {
+    const doc = new jsPDF();
+    const storeName = settings?.store_name || 'My Store';
+    const currentDate = new Date().toLocaleString();
+
+    // Header
+    doc.setFontSize(20);
+    doc.text(storeName, 105, 20, { align: 'center' });
+    doc.setFontSize(10);
+    doc.text('Invoice', 105, 30, { align: 'center' });
+    doc.text(`Date: ${currentDate}`, 105, 35, { align: 'center' });
+    
+    if (customer) {
+      doc.text(`Customer: ${customer}`, 20, 45);
+    }
+
+    // Items header
+    doc.setFontSize(12);
+    doc.text('Item', 20, 55);
+    doc.text('Qty', 120, 55);
+    doc.text('Price', 150, 55);
+    doc.text('Total', 180, 55);
+    
+    doc.line(20, 57, 190, 57);
+
+    // Items
+    doc.setFontSize(10);
+    let yPos = 65;
+    cart.forEach((item) => {
+      const itemTotal = item.price * item.quantity;
+      doc.text(item.name.substring(0, 30), 20, yPos);
+      doc.text(item.quantity.toString(), 120, yPos);
+      doc.text(formatCurrency(item.price), 150, yPos);
+      doc.text(formatCurrency(itemTotal), 180, yPos);
+      yPos += 8;
+    });
+
+    // Totals
+    yPos += 5;
+    doc.line(20, yPos, 190, yPos);
+    yPos += 8;
+    
+    doc.text('Subtotal:', 150, yPos);
+    doc.text(formatCurrency(subtotal), 180, yPos);
+    yPos += 8;
+    
+    doc.text('Tax (5%):', 150, yPos);
+    doc.text(formatCurrency(tax), 180, yPos);
+    yPos += 8;
+    
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'bold');
+    doc.text('Total:', 150, yPos);
+    doc.text(formatCurrency(total), 180, yPos);
+
+    // Footer
+    doc.setFontSize(8);
+    doc.setFont(undefined, 'normal');
+    doc.text('Thank you for your business!', 105, 280, { align: 'center' });
+
+    // Download
+    doc.save(`invoice-${new Date().getTime()}.pdf`);
+    toast.success('Invoice downloaded successfully!');
+  };
 
   const handleGenerateInvoice = async (paymentMethod: string) => {
     if (cart.length === 0) {
@@ -97,7 +167,7 @@ export const BillSection = ({ cart, onUpdateQuantity, onClearCart }: BillSection
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{item.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    ${item.price.toFixed(2)} each
+                    {formatCurrency(item.price)} each
                   </p>
                 </div>
                 <div className="flex items-center gap-1">
@@ -130,7 +200,7 @@ export const BillSection = ({ cart, onUpdateQuantity, onClearCart }: BillSection
                   </Button>
                 </div>
                 <p className="text-sm font-medium w-20 text-right">
-                  ${(item.price * item.quantity).toFixed(2)}
+                  {formatCurrency(item.price * item.quantity)}
                 </p>
               </div>
             ))
@@ -142,16 +212,16 @@ export const BillSection = ({ cart, onUpdateQuantity, onClearCart }: BillSection
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
             <span>Subtotal:</span>
-            <span className="font-medium">${subtotal.toFixed(2)}</span>
+            <span className="font-medium">{formatCurrency(subtotal)}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span>Tax (5%):</span>
-            <span className="font-medium">${tax.toFixed(2)}</span>
+            <span className="font-medium">{formatCurrency(tax)}</span>
           </div>
           <Separator />
           <div className="flex justify-between text-lg font-bold">
             <span>Total:</span>
-            <span>${total.toFixed(2)}</span>
+            <span>{formatCurrency(total)}</span>
           </div>
         </div>
 
@@ -184,6 +254,16 @@ export const BillSection = ({ cart, onUpdateQuantity, onClearCart }: BillSection
         >
           <Receipt className="h-4 w-4" />
           Generate Invoice
+        </Button>
+
+        <Button
+          variant="outline"
+          className="w-full gap-2"
+          onClick={generatePDF}
+          disabled={cart.length === 0}
+        >
+          <Download className="h-4 w-4" />
+          Download Bill as PDF
         </Button>
       </CardContent>
     </Card>

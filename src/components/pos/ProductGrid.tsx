@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useInventory } from "@/contexts/InventoryContext";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface ProductGridProps {
   searchTerm: string;
@@ -11,6 +12,7 @@ interface ProductGridProps {
 
 export const ProductGrid = ({ searchTerm, onAddToCart }: ProductGridProps) => {
   const { products } = useInventory();
+  const { formatCurrency } = useCurrency();
   const filteredProducts = products.filter((product) =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     product.sku.toLowerCase().includes(searchTerm.toLowerCase())
@@ -31,7 +33,7 @@ export const ProductGrid = ({ searchTerm, onAddToCart }: ProductGridProps) => {
             <div>
               <h3 className="font-semibold text-sm line-clamp-2">{product.name}</h3>
               <p className="text-lg font-bold text-primary mt-1">
-                ${product.price.toFixed(2)}
+                {formatCurrency(product.price)}
               </p>
               <Badge variant="secondary" className="text-xs mt-1">
                 Stock: {product.stock}

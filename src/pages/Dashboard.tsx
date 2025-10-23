@@ -9,12 +9,14 @@ import { LowSalesProducts } from "@/components/dashboard/LowSalesProducts";
 import { Layout } from "@/components/Layout";
 import { useInventory } from "@/contexts/InventoryContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCurrency } from "@/hooks/useCurrency";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 
 const Dashboard = () => {
   const { products } = useInventory();
   const { user } = useAuth();
+  const { formatCurrency } = useCurrency();
   const [adminName, setAdminName] = useState("Admin");
   const [totalProfit, setTotalProfit] = useState(0);
   const [totalSales, setTotalSales] = useState(0);
@@ -69,14 +71,14 @@ const Dashboard = () => {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <MetricCard
             title="Total Sales"
-            value={`$${totalSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            value={formatCurrency(totalSales)}
             icon={DollarSign}
             trend={`${totalInventoryCost > 0 ? ((totalSales / totalInventoryCost) * 100).toFixed(1) : 0}% of inventory`}
             trendUp={true}
           />
           <MetricCard
             title="Actual Profit"
-            value={`$${totalProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            value={formatCurrency(totalProfit)}
             icon={TrendingUp}
             trend={`${totalSales > 0 ? ((totalProfit / totalSales) * 100).toFixed(1) : 0}% margin`}
             trendUp={true}

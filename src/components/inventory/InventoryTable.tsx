@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
 import { Product } from "./ProductDialog";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface InventoryTableProps {
   products: Product[];
@@ -25,6 +26,7 @@ export const InventoryTable = ({
   categoryFilter,
   onEditProduct,
 }: InventoryTableProps) => {
+  const { formatCurrency } = useCurrency();
   const filteredProducts = products.filter((product) => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       product.sku.toLowerCase().includes(searchTerm.toLowerCase());
@@ -62,7 +64,7 @@ export const InventoryTable = ({
               <TableCell className="font-medium">{product.sku}</TableCell>
               <TableCell>{product.name}</TableCell>
               <TableCell className="capitalize">{product.category.replace("-", " ")}</TableCell>
-              <TableCell>${product.price.toFixed(2)}</TableCell>
+              <TableCell>{formatCurrency(product.price)}</TableCell>
               <TableCell>{product.stock}</TableCell>
               <TableCell>{getStatusBadge(product.status, product.stock)}</TableCell>
               <TableCell className="text-right">
