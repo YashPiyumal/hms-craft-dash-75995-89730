@@ -9,6 +9,22 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useStore } from "@/contexts/StoreContext";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { z } from "zod";
+
+const loginSchema = z.object({
+  email: z.string().email("Invalid email address").max(255),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+const signupSchema = z.object({
+  email: z.string().email("Invalid email address").max(255),
+  password: z.string()
+    .min(8, "Password must be at least 8 characters")
+    .max(72, "Password must be less than 72 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number"),
+  fullName: z.string().trim().min(1, "Name is required").max(100, "Name must be less than 100 characters"),
+});
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -31,11 +47,23 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
+      // Validate input
+      const validationResult = isLogin
+        ? loginSchema.safeParse({ email, password })
+        : signupSchema.safeParse({ email, password, fullName });
+
+      if (!validationResult.success) {
+        const firstError = validationResult.error.errors[0];
+        toast.error(firstError.message);
+        setIsLoading(false);
+        return;
+      }
+
       if (isLogin) {
         const { error } = await signIn(email, password);
         if (error) throw error;
       } else {
-        const { error } = await signUp(email, password, fullName);
+        const { error } = await signUp(email, password, fullName.trim());
         if (error) throw error;
       }
     } catch (error: any) {

@@ -23,9 +23,16 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const fetchSettings = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
     const { data, error } = await supabase
       .from('store_settings')
       .select('*')
+      .eq('user_id', user.id)
       .maybeSingle();
 
     if (error) {
