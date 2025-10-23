@@ -101,8 +101,9 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       throw updateError;
     }
 
-    setSettings({ ...settings, logo_url: publicUrl });
     toast.success('Logo updated!');
+    // Refresh settings to update UI immediately
+    await fetchSettings();
   };
 
   const refreshSettings = async () => {
